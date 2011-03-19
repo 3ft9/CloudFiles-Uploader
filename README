@@ -6,6 +6,12 @@ over to RackspaceCloud, and part of this meant uploading a fairly large number
 of files to the CloudFiles service. The web interface sucks for more than a
 few files so I knocked up this quick script to make it easier.
 
+Requirements
+============
+
+* Python (tested on 2.5.2, will probably work with earlier versions)
+* https://github.com/rackspace/python-cloudfiles
+
 Usage
 =====
 
