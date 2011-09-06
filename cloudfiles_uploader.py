@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import cloudfiles, sys, os, getopt
+import cloudfiles, sys, os, getopt, glob
 
 VERSION = '0.1'
 
@@ -23,7 +23,7 @@ def usage():
 	print 'This is v%s. Latest, bugs, etc: https://github.com/3ft9/CloudFiles-Uploader' % (VERSION)
 	print ''
 
-def upload_files(username, key, service_net, auth_url, container_name, files, quiet):
+def upload_files(username, key, service_net, auth_url, container_name, files, prefix, quiet):
 	try:
 		# Attempt a connection
 		conn = cloudfiles.get_connection(username = username, api_key = key, servicenet = service_net, authurl = auth_url)
@@ -50,21 +50,23 @@ def upload_files(username, key, service_net, auth_url, container_name, files, qu
 	except:
 		sys.stderr.write('Failed to create a container called "%s"\n' % (container_name))
 	else:
-		for f in files:
+		while len(files) > 0:
+			f = files.pop(0)
 			if os.path.isfile(f):
 				try:
 					if not quiet:
-						sys.stdout.write('Uploading "%s"...\n' % (os.path.basename(f)))
-					obj = cont.create_object(os.path.basename(f))
+						sys.stdout.write('Uploading "%s"...\n' % (f))
+					obj = cont.create_object('%s%s' % (prefix, f))
 					obj.load_from_filename(f)
 				except:
-					sys.stderr.write('  Upload of "%s" failed!\n' % (os.path.basename(f)))
-			else:
-				sys.stderr.write('Uploading directories is not currently supported!\n')
+					sys.stderr.write('  Upload of "%s" failed!\n' % (f))
+			elif f not in ('.', '..'):
+				for filename in glob.glob("%s/*" % (f)):
+					files.append(filename)
 
 def main(argv):
 	try:
-		opts, files = getopt.getopt(argv, "hu:k:sd:c:q", ["help", "username=", "key=", "servicenet", "datacentre=", "container=", "quiet"])
+		opts, files = getopt.getopt(argv, "hu:k:sd:c:p:q", ["help", "username=", "key=", "servicenet", "datacentre=", "container=", "prefix=", "quiet"])
 	except getopt.GetoptError:
 		usage()
 		sys.exit(2)
@@ -75,6 +77,7 @@ def main(argv):
 	container_name = False
 	service_net = False
 	auth_url = cloudfiles.us_authurl
+	prefix = ""
 	quiet = False
 
 	for opt, arg in opts:
@@ -87,6 +90,8 @@ def main(argv):
 			key = arg
 		elif opt in ("-s", "--servicenet"):
 			service_net = True
+		elif opt in ("-p", "--prefix"):
+			prefix = arg
 		elif opt in ("-d", "--datacentre"):
 			if arg == 'uk':
 				auth_url = cloudfiles.uk_authurl
@@ -100,7 +105,7 @@ def main(argv):
 	if username == False or key == False or container_name == False or len(files) == 0:
 		usage()
 	else:
-		upload_files(username, key, service_net, auth_url, container_name, files, quiet)
+		upload_files(username, key, service_net, auth_url, container_name, files, prefix, quiet)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
