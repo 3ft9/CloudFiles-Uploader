@@ -16,6 +16,8 @@ def usage():
 	print '                    the local network'
 	print '  -d, --datacentre  specifies which data centre you\'re in, "us" or "uk"'
 	print '                    if ommitted then "us" will be tried first then "uk"'
+	print '  -p, --prefix      Specifies a prefix for the destination object names'
+	print '  -r, --recursive   Recurse into directories'
 	print '  -q, --quiet       suppress all output except error messages'
 	print ''
 	print 'The username, key and container options are required.'
@@ -23,7 +25,7 @@ def usage():
 	print 'This is v%s. Latest, bugs, etc: https://github.com/3ft9/CloudFiles-Uploader' % (VERSION)
 	print ''
 
-def upload_files(username, key, service_net, auth_url, container_name, files, prefix, quiet):
+def upload_files(username, key, service_net, auth_url, container_name, files, recursive, prefix, quiet):
 	try:
 		# Attempt a connection
 		conn = cloudfiles.get_connection(username = username, api_key = key, servicenet = service_net, authurl = auth_url)
@@ -53,20 +55,26 @@ def upload_files(username, key, service_net, auth_url, container_name, files, pr
 		while len(files) > 0:
 			f = files.pop(0)
 			if os.path.isfile(f):
+				destname = f
+				if not recursive:
+					destname = os.path.basename(f)
 				try:
 					if not quiet:
-						sys.stdout.write('Uploading "%s"...\n' % (f))
-					obj = cont.create_object('%s%s' % (prefix, f))
+						sys.stdout.write('Uploading "%s"...\n' % (destname))
+					obj = cont.create_object('%s%s' % (prefix, destname))
 					obj.load_from_filename(f)
 				except:
 					sys.stderr.write('  Upload of "%s" failed!\n' % (f))
 			elif f not in ('.', '..'):
-				for filename in glob.glob("%s/*" % (f)):
-					files.append(filename)
+				if recursive:
+					for filename in glob.glob("%s/*" % (f)):
+						files.append(filename)
+				else:
+					sys.stderr.write('Ignoring "%s" because it\'s a directory\n' % (f))
 
 def main(argv):
 	try:
-		opts, files = getopt.getopt(argv, "hu:k:sd:c:p:q", ["help", "username=", "key=", "servicenet", "datacentre=", "container=", "prefix=", "quiet"])
+		opts, files = getopt.getopt(argv, "hu:k:sd:c:p:rq", ["help", "username=", "key=", "servicenet", "datacentre=", "container=", "prefix=", "recursive", "quiet"])
 	except getopt.GetoptError:
 		usage()
 		sys.exit(2)
@@ -76,6 +84,7 @@ def main(argv):
 	key = False
 	container_name = False
 	service_net = False
+	recursive = False
 	auth_url = cloudfiles.us_authurl
 	prefix = ""
 	quiet = False
@@ -90,6 +99,8 @@ def main(argv):
 			key = arg
 		elif opt in ("-s", "--servicenet"):
 			service_net = True
+		elif opt in ("-r", "--recursive"):
+			recursive = True
 		elif opt in ("-p", "--prefix"):
 			prefix = arg
 		elif opt in ("-d", "--datacentre"):
@@ -105,7 +116,7 @@ def main(argv):
 	if username == False or key == False or container_name == False or len(files) == 0:
 		usage()
 	else:
-		upload_files(username, key, service_net, auth_url, container_name, files, prefix, quiet)
+		upload_files(username, key, service_net, auth_url, container_name, files, recursive, prefix, quiet)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
