@@ -80,6 +80,9 @@ def main(argv):
 		sys.exit(2)
 
 	# Defaults
+	if not hasattr(cloudfiles, "us_authurl"):
+        cloudfiles.us_authurl = "https://auth.api.rackspacecloud.com/v1.0"
+        cloudfiles.uk_authurl = "https://lon.auth.api.rackspacecloud.com/v1.0"
 	username = False
 	key = False
 	container_name = False
